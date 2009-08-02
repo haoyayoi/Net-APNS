@@ -1,15 +1,24 @@
 package Net::APNS;
 
-use strict;
-use warnings;
-our $VERSION = '0.01';
+use Moose;
+
+extends 'Net::APNS::Base';
+
+sub new {
+    my $class = shift;
+    return $class;
+}
+
+sub gateway {
+    
+}
 
 1;
 __END__
 
 =head1 NAME
 
-Net::APNS -
+Net::APNS - Apple Push Notification Service for perl.
 
 =head1 SYNOPSIS
 
