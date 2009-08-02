@@ -2,7 +2,7 @@ use inc::Module::Install;
 name 'Net-APNS';
 all_from 'lib/Net/APNS.pm';
 
-# requires '';
+requires 'Moose';
 
 tests 't/*.t';
 author_tests 'xt';
