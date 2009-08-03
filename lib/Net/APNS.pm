@@ -1,16 +1,18 @@
 package Net::APNS;
 
 use Moose;
+use Net::APNS::Notification;
 
 extends 'Net::APNS::Base';
 
-sub new {
-    my $class = shift;
-    return $class;
+sub Build {
+    my $self = shift;
+    $self->loadconf;
 }
 
-sub gateway {
-    
+sub notify {
+    my $self = shift;
+    return Net::APNS::Notification->new;
 }
 
 1;
