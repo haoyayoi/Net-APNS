@@ -2,18 +2,19 @@ package Net::APNS;
 
 use Moose;
 use Net::APNS::Notification;
-
-extends 'Net::APNS::Base';
-
-sub Build {
-    my $self = shift;
-    $self->loadconf;
-}
+our $VERSION = '0.0101';
 
 sub notify {
-    my $self = shift;
-    return Net::APNS::Notification->new;
+    my ($self, $args) = @_;
+    return Net::APNS::Notification->new(
+        cert        => $args->{cert},
+        key         => $args->{key},
+        passwd      => $args->{passwd},
+    );
 }
+
+__PACKAGE__->meta->make_immutable;
+no Moose;
 
 1;
 __END__
@@ -25,10 +26,20 @@ Net::APNS - Apple Push Notification Service for perl.
 =head1 SYNOPSIS
 
   use Net::APNS;
-
+  my $APNS = Net::APNS->new;
+  my $Notifier = $APNS->notify({
+      cert   => "cert.pem",
+      key    => "key.pem",
+      passwd => "pass"
+  });
+  $Notifier->devicetoken("....");
+  $Notifier->message("message");
+  $Notifier->badge(4);
+  $Notifier->write;
 =head1 DESCRIPTION
 
-Net::APNS is
+Net::APNS is Apple Push Notification Service.
+Push message to iPhone and get unavalble-devicetoken.
 
 =head1 AUTHOR
 

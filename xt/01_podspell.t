@@ -1,9 +1,9 @@
-use warnings;
 use strict;
+use warnings;
 use Test::More;
 eval q{ use Test::Spelling };
 plan skip_all => "Test::Spelling is not installed." if $@;
-
+ 
 my $spell_cmd;
 foreach my $path (split(/:/, $ENV{PATH}))
 {
@@ -19,8 +19,12 @@ $ENV{LANG} = 'C';
 add_stopwords(map { split /[\s\:\-]/ } <DATA>);
 set_spell_cmd($spell_cmd);
 all_pod_files_spelling_ok('lib');
-
 __DATA__
 haoyayoi
 st.hao.yayoi@gmail.com
 Net::APNS
+valble
+devicetoken
+iPhone
+unavalble
+
