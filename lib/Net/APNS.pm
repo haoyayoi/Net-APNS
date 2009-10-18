@@ -14,7 +14,6 @@ sub notify {
 }
 
 __PACKAGE__->meta->make_immutable;
-1;
 __END__
 
 =head1 NAME
@@ -70,39 +69,22 @@ certification password. (option)
 
 =head2 PUSH
 
-=over 3
-
-=item At all in one time.
-
 Payload contains message, badge and more.
 
   $APNS->devicetoken($devicetoken);
-  $APNS->payload($payload);
-  $APNS->write;
-
-or
-
-  $APNS->devicetoken($devicetoken);
-  $APNS->write($payload);
-
-=item specify message and badge
-
-This style can push specify message and badge only.
-
-  $APNS->devicetoken($devicetoken);
-  $APNS->message($message);
-  $APNS->badge($badge);
-  $APNS->write;>
-
-or
-
-  $APNS->devicetoken($devicetoken);
   $APNS->write({
+      sandbox => $sandbox,
       message => $message,
       badge   => $badge,
   });
 
-=back
+or
+
+  $APNS->devicetoken($devicetoken);
+  $APNS->sandbox($sandbox);
+  $APNS->message($message);
+  $APNS->badge($badge);
+  $APNS->write;
 
 =head1 AUTHOR
 
