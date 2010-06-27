@@ -7,6 +7,7 @@ package Test::Notification;
 use base qw(Test::Class);
 use Test::More;
 use Test::Moose;
+use Test::Mouse;
 use Net::APNS::Notification;
 use Net::SSLeay;
 
@@ -20,7 +21,7 @@ sub test_init_notificaion : Test(setup) {
     );
 }
 
-sub notify_attribute : Tests(7) {
+sub notify_attribute : Tests(6) {
     my $Notify = shift->{notify};
     has_attribute_ok ($Notify, "port", "notifyport");
     has_attribute_ok ($Notify, "message", "message");

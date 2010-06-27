@@ -1,4 +1,8 @@
 Revision history for Perl extension Net::APNS
+0.0201  Mon Jun 28 06:27:11 2010
+        - fix test
+        - export notify method
+
 0.0101  Thu Aug 13 22:38:43 2009
         - add notification.pm
 

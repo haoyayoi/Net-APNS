@@ -5,7 +5,7 @@ use Net::APNS::Notification;
 use Sub::Exporter -setup => {
     exports => [ qw/notify/ ],
 };
-our $VERSION = '0.02';
+our $VERSION = '0.0201';
 
 sub new { bless {}, $_[0]; }
 

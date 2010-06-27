@@ -47,24 +47,18 @@ has passwd => (
     is  => 'rw',
 );
 
-has type_pem => (
-    is      => 'ro',
-    default => &Net::SSLeay::FILETYPE_PEM,
-);
+sub type_pem { &Net::SSLeay::FILETYPE_PEM }
 
 sub _apple_serv_params {
-    my $self = shift;
+    my $self = $_[0];
     return sockaddr_in( $self->port, inet_aton( $self->host ) );
 }
 
 sub host {
-    my $self = shift;
-    if ( $self->sandbox ) {
-        return 'gateway.sandbox.push.apple.com';
-    }
-    else {
-        return 'gateway.push.apple.com';
-    }
+    my $self = $_[0];
+    return 'gateway.' .
+           $self->sandbox ? 'sandbox.' : '' .
+           'push.apple.com';
 }
 
 has port => (
@@ -121,10 +115,11 @@ sub write {
     my $ctx = Net::SSLeay::CTX_new() or die_now("Failed to create SSL_CTX $!.");
     Net::SSLeay::CTX_set_options( $ctx, &Net::SSLeay::OP_ALL );
     die_if_ssl_error("ssl ctx set options");
+
     Net::SSLeay::CTX_set_default_passwd_cb( $ctx, sub { $self->passwd } );
-    Net::SSLeay::CTX_use_RSAPrivateKey_file( $ctx, $self->key,
-        $self->type_pem );
+    Net::SSLeay::CTX_use_RSAPrivateKey_file( $ctx, $self->key, $self->type_pem );
     die_if_ssl_error("private key");
+    
     Net::SSLeay::CTX_use_certificate_file( $ctx, $self->cert, $self->type_pem );
     die_if_ssl_error("certificate");
 
