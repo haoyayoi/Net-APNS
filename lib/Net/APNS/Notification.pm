@@ -4,6 +4,7 @@ use Any::Moose;
 use Net::SSLeay qw/die_now die_if_ssl_error/;
 use Socket;
 use Encode qw(decode encode);
+use Carp;
 use JSON::XS;
 our $VERSION = '0.02';
 
@@ -73,9 +74,17 @@ has sandbox => (
     default => 0,
 );
 
+has alert => (
+    is       => 'rw',
+    isa      => 'HashRef',
+    default  => sub { {} },
+);
+
 sub _message_encode {
     my $self = shift;
-    return encode( 'unicode', decode( 'utf8', $self->message ) );
+    return encode( 'unicode', decode( 'utf8', sub {
+        $self->alert ne {} ? $self->alert : $self->message }->()
+    ) );
 }
 
 sub _pack_payload {
@@ -97,9 +106,40 @@ sub _pack_payload {
 
 sub write {
     my ( $self, $args ) = @_;
-    if ( $args->{devicetoken} ) { $self->devicetoken( $args->{devicetoken} ); }
-    if ( $args->{message} )     { $self->message( $args->{message} ); }
-    if ( $args->{badge} )       { $self->badge( $args->{badge} ); }
+
+    if ( $args->{alert} ) {
+        if ( ref $args->{alert} eq 'SCALAR') {
+            $self->message( $args->{alert} );
+        } elsif ( ref $args->{alert} eq 'HASH' ) {
+            my $def_keys = {
+                'body'           => { type => 'SCALAR' },
+                'action-loc-key' => { type => 'SCALAR' },
+                'loc-key'        => { type => 'SCALAR' },
+                'loc-args'       => { type => 'ARRAY'  },
+                'launch-image'   => { type => 'SCALAR' },
+            };
+            my $alert = $args->{alert};
+            
+            foreach my $key (keys %{$alert}) {
+                # delete illegular keys
+                delete $alert->{$key} and next
+                    unless grep(/^$key$/, keys %$def_keys);
+                
+                # alert-value ref check
+                croak "failed $key\'s value type"
+                    unless ( ref $alert->{$key} eq $def_keys->{$key}->{type} );
+            }
+            return unless keys %$alert;
+            $self->alert( $alert );
+        } else {
+            croak 'failed alert ref type:' . ref $args->{alert};
+        }
+    }
+    
+    $self->message( $args->{message} ) if ( $args->{message} );
+    $self->devicetoken( $args->{devicetoken} ) if ( $args->{devicetoken} );
+    $self->badge( $args->{badge} ) if ( $args->{badge} );
+    
     $Net::SSLeay::trace       = 4;
     $Net::SSLeay::ssl_version = 10;
 
