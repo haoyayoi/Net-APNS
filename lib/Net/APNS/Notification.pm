@@ -6,6 +6,7 @@ use Socket;
 use Encode qw(decode encode);
 use Carp;
 use JSON::XS;
+use Params::Validate;
 our $VERSION = '0.02';
 
 has message => (
@@ -21,10 +22,10 @@ has badge => (
 );
 
 has devicetoken => (
-    is       => 'rw',
-    isa      => 'Str',
-    trigger  => sub {
-        if (@_ >= 2) {
+    is      => 'rw',
+    isa     => 'Str',
+    trigger => sub {
+        if ( @_ >= 2 ) {
             my $dt = $_[1];
             $dt =~ s/\s//g;
             $_[0]->{devicetoken} = $dt;
@@ -44,9 +45,7 @@ has key => (
     required => 1,
 );
 
-has passwd => (
-    is  => 'rw',
-);
+has passwd => ( is => 'rw', );
 
 sub type_pem { &Net::SSLeay::FILETYPE_PEM }
 
@@ -57,15 +56,13 @@ sub _apple_serv_params {
 
 sub host {
     my $self = $_[0];
-    return 'gateway.' .
-           $self->sandbox ? 'sandbox.' : '' .
-           'push.apple.com';
+    return 'gateway.' . $self->sandbox ? 'sandbox.' : '' . 'push.apple.com';
 }
 
 has port => (
-    is       => 'rw',
-    isa      => 'Int',
-    default  => 2195,
+    is      => 'rw',
+    isa     => 'Int',
+    default => 2195,
 );
 
 has sandbox => (
@@ -75,26 +72,35 @@ has sandbox => (
 );
 
 has alert => (
-    is       => 'rw',
-    isa      => 'HashRef',
-    default  => sub { {} },
+    is      => 'rw',
+    isa     => 'HashRef',
+    default => sub { {} },
+    trigger => sub {
+        if ( @_ >= 2 ) {
+            my $alert = $_[0]->_alert_validate( $_[1] );
+            $_[0]->{alert} = $alert if defined $alert;
+        } else {
+            return $_[0]->{alert};
+        }
+    }
 );
 
 sub _message_encode {
     my $self = shift;
-    return encode( 'unicode', decode( 'utf8', sub {
-        $self->alert ne {} ? $self->alert : $self->message }->()
-    ) );
+    my $str = ( $self->alert ne {} ) ? $self->alert : $self->message;
+    return encode( 'unicode', decode( 'utf8', $str ) );
 }
 
 sub _pack_payload {
-    my $self = shift;
-    my $jsonxs = JSON::XS->new->utf8(1)->encode({
-        aps => {
-            alert => $self->_message_encode,
-            badge => $self->badge,
+    my $self   = shift;
+    my $jsonxs = JSON::XS->new->utf8(1)->encode(
+        {
+            aps => {
+                alert => $self->_message_encode,
+                badge => $self->badge,
+            }
         }
-    });
+    );
     $jsonxs =~ s/("badge":)"([^"]+)"/$1$2/;
     return
         chr(0)
@@ -104,42 +110,45 @@ sub _pack_payload {
       . $jsonxs;
 }
 
+sub _alert_validate {
+    my $self     = shift;
+    my $def_keys = {
+        'body'           => { type => 'SCALAR' },
+        'action-loc-key' => { type => 'SCALAR' },
+        'loc-key'        => { type => 'SCALAR' },
+        'loc-args'       => { type => 'ARRAY' },
+        'launch-image'   => { type => 'SCALAR' },
+    };
+    my %args = validate( @_, $def_keys );
+    foreach my $key ( keys %args ) {
+
+        # delete illegular keys
+        delete $args{$key} and next
+          unless grep( /^$key$/, keys %$def_keys );
+    }
+    return \%args;
+}
+
 sub write {
     my ( $self, $args ) = @_;
 
     if ( $args->{alert} ) {
-        if ( ref $args->{alert} eq 'SCALAR') {
+        if ( ref $args->{alert} eq 'SCALAR' ) {
             $self->message( $args->{alert} );
-        } elsif ( ref $args->{alert} eq 'HASH' ) {
-            my $def_keys = {
-                'body'           => { type => 'SCALAR' },
-                'action-loc-key' => { type => 'SCALAR' },
-                'loc-key'        => { type => 'SCALAR' },
-                'loc-args'       => { type => 'ARRAY'  },
-                'launch-image'   => { type => 'SCALAR' },
-            };
-            my $alert = $args->{alert};
-            
-            foreach my $key (keys %{$alert}) {
-                # delete illegular keys
-                delete $alert->{$key} and next
-                    unless grep(/^$key$/, keys %$def_keys);
-                
-                # alert-value ref check
-                croak "failed $key\'s value type"
-                    unless ( ref $alert->{$key} eq $def_keys->{$key}->{type} );
-            }
-            return unless keys %$alert;
-            $self->alert( $alert );
-        } else {
+        }
+        elsif ( ref $args->{alert} eq 'HASH' ) {
+            my $alert = $self->_alert_validate( $args->{alert} );
+            $self->alert($alert);
+        }
+        else {
             croak 'failed alert ref type:' . ref $args->{alert};
         }
     }
-    
-    $self->message( $args->{message} ) if ( $args->{message} );
+
+    $self->message( $args->{message} )         if ( $args->{message} );
     $self->devicetoken( $args->{devicetoken} ) if ( $args->{devicetoken} );
-    $self->badge( $args->{badge} ) if ( $args->{badge} );
-    
+    $self->badge( $args->{badge} )             if ( $args->{badge} );
+
     $Net::SSLeay::trace       = 4;
     $Net::SSLeay::ssl_version = 10;
 
@@ -157,9 +166,10 @@ sub write {
     die_if_ssl_error("ssl ctx set options");
 
     Net::SSLeay::CTX_set_default_passwd_cb( $ctx, sub { $self->passwd } );
-    Net::SSLeay::CTX_use_RSAPrivateKey_file( $ctx, $self->key, $self->type_pem );
+    Net::SSLeay::CTX_use_RSAPrivateKey_file( $ctx, $self->key,
+        $self->type_pem );
     die_if_ssl_error("private key");
-    
+
     Net::SSLeay::CTX_use_certificate_file( $ctx, $self->cert, $self->type_pem );
     die_if_ssl_error("certificate");
 
