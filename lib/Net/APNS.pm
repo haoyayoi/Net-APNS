@@ -5,7 +5,7 @@ use Net::APNS::Notification;
 use Sub::Exporter -setup => {
     exports => [ qw/notify/ ],
 };
-our $VERSION = '0.0201';
+our $VERSION = '0.0202';
 
 sub new { bless {}, $_[0]; }
 
@@ -60,7 +60,7 @@ Return push client. Need specify parameters.
 
 =item Cert
 
-Server certification file. 
+Server certification file.
 
 =item Key
 
