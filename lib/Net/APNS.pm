@@ -5,7 +5,7 @@ use Net::APNS::Notification;
 use Sub::Exporter -setup => {
     exports => [ qw/notify/ ],
 };
-our $VERSION = '0.0201';
+our $VERSION = '0.0202';
 
 sub new { bless {}, $_[0]; }
 
@@ -37,6 +37,8 @@ Net::APNS - Apple Push Notification Service for perl.
   $Notifier->devicetoken("....");
   $Notifier->message("message");
   $Notifier->badge(4);
+  $Notifier->sound('default');
+  $Notifier->custom({ custom_key => 'custom_value' });
   $Notifier->write;
 
 =head1 DESCRIPTION
@@ -60,7 +62,7 @@ Return push client. Need specify parameters.
 
 =item Cert
 
-Server certification file. 
+Server certification file.
 
 =item Key
 
@@ -81,6 +83,8 @@ Payload contains message, badge and more.
       sandbox => $sandbox,
       message => $message,
       badge   => $badge,
+      sound   => $sound,
+      custom  => $custom
   });
 
 or
@@ -89,6 +93,8 @@ or
   $APNS->sandbox($sandbox);
   $APNS->message($message);
   $APNS->badge($badge);
+  $APNS->sound($sound);
+  $APNS->custom($custom);
   $APNS->write;
 
 =head1 AUTHOR
