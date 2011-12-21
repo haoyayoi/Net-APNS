@@ -5,7 +5,7 @@ use Net::SSLeay qw/die_now die_if_ssl_error/;
 use Socket;
 use Encode qw(decode encode);
 use JSON::XS;
-our $VERSION = '0.02';
+our $VERSION = '0.0202';
 
 has message => (
     is      => 'rw',
@@ -13,16 +13,22 @@ has message => (
     default => '',
 );
 
-has custom => (
-    is      => 'rw',
-    isa     => 'HashRef',
-    default => sub { {} }
-);
-
 has badge => (
     is      => 'rw',
     isa     => 'Int',
     default => 0,
+);
+
+has sound => (
+    is      => 'rw',
+    isa     => 'Str',
+    default => ''
+);
+
+has custom => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    default => sub { {} }
 );
 
 has devicetoken => (
@@ -90,9 +96,13 @@ sub _pack_payload {
     my $data = {
         aps => {
             alert => $self->_message_encode,
-            badge => $self->badge,
+            badge => $self->badge
         }
     };
+
+    if (length $self->sound) {
+        $data->{aps}->{sound} = $self->sound;
+    }
 
     if (scalar keys %{$self->custom} > 0) {
         $data->{custom} = $self->custom;
@@ -110,10 +120,13 @@ sub _pack_payload {
 
 sub write {
     my ( $self, $args ) = @_;
+
     if ( $args->{devicetoken} ) { $self->devicetoken( $args->{devicetoken} ); }
     if ( $args->{message} )     { $self->message( $args->{message} ); }
     if ( $args->{badge} )       { $self->badge( $args->{badge} ); }
+    if ( $args->{sound} )       { $self->sound( $args->{sound} ); }
     if ( $args->{custom} )      { $self->custom( $args->{custom} ); }
+
     $Net::SSLeay::trace       = 4;
     $Net::SSLeay::ssl_version = 10;
 
