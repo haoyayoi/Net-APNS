@@ -5,7 +5,7 @@ use Net::SSLeay qw/die_now die_if_ssl_error/;
 use Socket;
 use Encode qw(decode encode);
 use JSON::XS;
-our $VERSION = '0.02';
+our $VERSION = '0.0202';
 
 has message => (
     is      => 'rw',
@@ -17,6 +17,18 @@ has badge => (
     is      => 'rw',
     isa     => 'Int',
     default => 0,
+);
+
+has sound => (
+    is      => 'rw',
+    isa     => 'Str',
+    default => ''
+);
+
+has custom => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    default => sub { {} }
 );
 
 has devicetoken => (
@@ -57,7 +69,7 @@ sub _apple_serv_params {
 sub host {
     my $self = $_[0];
     return 'gateway.' .
-           $self->sandbox ? 'sandbox.' : '' .
+           ($self->sandbox ? 'sandbox.' : '') .
            'push.apple.com';
 }
 
@@ -80,12 +92,23 @@ sub _message_encode {
 
 sub _pack_payload {
     my $self = shift;
-    my $jsonxs = JSON::XS->new->utf8(1)->encode({
+
+    my $data = {
         aps => {
             alert => $self->_message_encode,
-            badge => $self->badge,
+            badge => $self->badge
         }
-    });
+    };
+
+    if (length $self->sound) {
+        $data->{aps}->{sound} = $self->sound;
+    }
+
+    if (scalar keys %{$self->custom} > 0) {
+        $data->{custom} = $self->custom;
+    }
+
+    my $jsonxs = JSON::XS->new->utf8(1)->encode($data);
     $jsonxs =~ s/("badge":)"([^"]+)"/$1$2/;
     return
         chr(0)
@@ -97,9 +120,13 @@ sub _pack_payload {
 
 sub write {
     my ( $self, $args ) = @_;
+
     if ( $args->{devicetoken} ) { $self->devicetoken( $args->{devicetoken} ); }
     if ( $args->{message} )     { $self->message( $args->{message} ); }
     if ( $args->{badge} )       { $self->badge( $args->{badge} ); }
+    if ( $args->{sound} )       { $self->sound( $args->{sound} ); }
+    if ( $args->{custom} )      { $self->custom( $args->{custom} ); }
+
     $Net::SSLeay::trace       = 4;
     $Net::SSLeay::ssl_version = 10;
 
@@ -119,7 +146,7 @@ sub write {
     Net::SSLeay::CTX_set_default_passwd_cb( $ctx, sub { $self->passwd } );
     Net::SSLeay::CTX_use_RSAPrivateKey_file( $ctx, $self->key, $self->type_pem );
     die_if_ssl_error("private key");
-    
+
     Net::SSLeay::CTX_use_certificate_file( $ctx, $self->cert, $self->type_pem );
     die_if_ssl_error("certificate");
 
