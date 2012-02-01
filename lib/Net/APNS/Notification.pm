@@ -5,7 +5,7 @@ use Net::SSLeay qw/die_now die_if_ssl_error/;
 use Socket;
 use Encode qw(decode encode);
 use JSON::XS;
-our $VERSION = '0.0202';
+our $VERSION = '0.0203';
 
 has message => (
     is      => 'rw',
@@ -57,6 +57,13 @@ has key => (
 
 has passwd => (
     is  => 'rw',
+);
+
+has connection => (
+    is        => 'rw',
+    isa       => 'ArrayRef',
+    predicate => 'has_connection',
+    clearer   => 'clear_connection'
 );
 
 sub type_pem { &Net::SSLeay::FILETYPE_PEM }
@@ -118,14 +125,10 @@ sub _pack_payload {
       . $jsonxs;
 }
 
-sub write {
-    my ( $self, $args ) = @_;
+sub _connect {
+    my ( $self ) = @_;
 
-    if ( $args->{devicetoken} ) { $self->devicetoken( $args->{devicetoken} ); }
-    if ( $args->{message} )     { $self->message( $args->{message} ); }
-    if ( $args->{badge} )       { $self->badge( $args->{badge} ); }
-    if ( $args->{sound} )       { $self->sound( $args->{sound} ); }
-    if ( $args->{custom} )      { $self->custom( $args->{custom} ); }
+    return if ($self->has_connection);
 
     $Net::SSLeay::trace       = 4;
     $Net::SSLeay::ssl_version = 10;
@@ -153,11 +156,46 @@ sub write {
     my $ssl = Net::SSLeay::new($ctx);
     Net::SSLeay::set_fd( $ssl, fileno($socket) );
     Net::SSLeay::connect($ssl) or die_now("Failed SSL connect ($!)");
+
+    my $connection = [$socket, $ctx, $ssl];
+    $self->connection($connection);
+}
+
+sub _disconnect {
+    my ( $self ) = @_;
+
+    my ($socket, $ctx, $ssl) = @{$self->connection};
+
+    CORE::shutdown( $socket, 1 ) if $socket;
+    Net::SSLeay::free($ssl) if $ssl;
+    Net::SSLeay::CTX_free($ctx) if $ctx;
+    close($socket) if $socket;
+
+    $self->clear_connection;
+}
+
+sub write {
+    my ( $self, $args ) = @_;
+
+    if ( $args->{devicetoken} ) { $self->devicetoken( $args->{devicetoken} ); }
+    if ( $args->{message} )     { $self->message( $args->{message} ); }
+    if ( $args->{badge} )       { $self->badge( $args->{badge} ); }
+    if ( $args->{sound} )       { $self->sound( $args->{sound} ); }
+    if ( $args->{custom} )      { $self->custom( $args->{custom} ); }
+
+    if (!$self->has_connection) {
+        $self->_connect();
+    }
+
+    my ($socket, $ctx, $ssl) = @{$self->connection};
     Net::SSLeay::write( $ssl, $self->_pack_payload );
-    CORE::shutdown( $socket, 1 );
-    Net::SSLeay::free($ssl);
-    Net::SSLeay::CTX_free($ctx);
-    close($socket);
+}
+
+sub DEMOLISH {
+    my ( $self ) = @_;
+
+    return if (!$self->has_connection);
+    $self->_disconnect();
 }
 
 __PACKAGE__->meta->make_immutable;
