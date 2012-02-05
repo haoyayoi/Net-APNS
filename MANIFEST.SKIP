@@ -19,3 +19,6 @@
 ^[^/]+\.yaml$
 ^[^/]+\.pl$
 ^\.shipit$
+^MYMETA\.json$
+^MYMETA\.yml$
+
