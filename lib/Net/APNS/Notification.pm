@@ -59,6 +59,18 @@ has passwd => (
     is  => 'rw',
 );
 
+has ssl_trace_level => (
+   is => 'rw',
+   isa => 'Int',
+   default => 4,
+);
+
+has ssl_version => (
+   is => 'rw',
+   isa => 'Int',
+   default => 10,
+);
+
 sub type_pem { &Net::SSLeay::FILETYPE_PEM }
 
 sub _apple_serv_params {
@@ -127,8 +139,8 @@ sub write {
     if ( $args->{sound} )       { $self->sound( $args->{sound} ); }
     if ( $args->{custom} )      { $self->custom( $args->{custom} ); }
 
-    $Net::SSLeay::trace       = 4;
-    $Net::SSLeay::ssl_version = 10;
+    $Net::SSLeay::trace       = $self->ssl_trace_level;
+    $Net::SSLeay::ssl_version = $self->ssl_version;
 
     Net::SSLeay::load_error_strings();
     Net::SSLeay::SSLeay_add_ssl_algorithms();
